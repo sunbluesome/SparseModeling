@@ -14,7 +14,7 @@ random_state = 0
 rng = MersenneTwister(random_state)
 patch_size = 8
 step = patch_size
-max_patches = 25500
+max_patches = 10000
 sig = 20
 spike_frac = 0.25
 m = 256
@@ -39,6 +39,7 @@ savefig(dir * "/barbara_spike.png")
 A = generate_dct(patch_size, m)
 for i in 1:n_iter_ksvd
     # extract_patches
+    println(i)
     patches = extract_patches_2d(img, patch_size, max_patches, rng)
     patches_1d = zeros(patch_size^2, max_patches)
     for i in 1:max_patches
