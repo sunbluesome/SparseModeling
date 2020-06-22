@@ -6,6 +6,7 @@ include("../MP/OMP.jl")
 
 abstract type PredictMethod end
 mutable struct ApproxSVD <: PredictMethod end
+mutable struct PSVD <: PredictMethod end
 
 mutable struct KSVD
    sig::Float64
@@ -40,11 +41,22 @@ function predict(ksvd::KSVD,
             support = findall(X[j, :] .!= 0)
             length(support) == 0 && continue
 
-            X[j, support] .= 0
-            residual_err = Y[:, support] - A * X[:, support]
-            U, s, V = svd(residual_err)
-            A[:, j] = U[:, 1]
-            X[j, support] = s[1] .* V[:, 1]
+            if typeof(ksvd.method) == ApproxSVD
+                A[:, j] .= 0
+                residual_err = Y[:, support] - A * X[:, support]
+                g = X[j, support]
+                d = residual_err * g
+                d = normalize(d)
+                g = residual_err * d
+                A[:, j] .= d
+                X[j, support] .= g
+            else
+                X[j, support] .= 0
+                residual_err = Y[:, support] - A * X[:, support]
+                U, s, V = psvd(residual_err)
+                A[:, j] = U[:, 1]
+                X[j, support] = s[1] .* V[:, 1]
+            end
         end
         opt = mean(abs.(Y - A * X))
         log[k] = opt
@@ -77,11 +89,22 @@ function predict(ksvd::KSVD,
             support = findall(X[j, :] .!= 0)
             length(support) == 0 && continue
 
-            X[j, support] .= 0
-            residual_err = Y[:, support] - A * X[:, support]
-            U, s, V = svd(residual_err)
-            A[:, j] = U[:, 1]
-            X[j, support] = s[1] .* V[:, 1]
+            if typeof(ksvd.method) == ApproxSVD
+                A[:, j] .= 0
+                residual_err = Y[:, support] - A * X[:, support]
+                g = X[j, support]
+                d = residual_err * g
+                d = normalize(d)
+                g = residual_err * d
+                A[:, j] .= d
+                X[j, support] .= g
+            else
+                X[j, support] .= 0
+                residual_err = Y[:, support] - A * X[:, support]
+                U, s, V = psvd(residual_err)
+                A[:, j] = U[:, 1]
+                X[j, support] = s[1] .* V[:, 1]
+            end
         end
         opt = mean(abs.(Y .- A * X))
         opt2 = percent_recovery_of_atoms(A, A0, threshold=threshold)
@@ -115,12 +138,25 @@ function predict(ksvd::KSVD,
         for j in 1:ksvd.m
             support = findall(X[j, :] .!= 0)
             length(support) == 0 && continue
-            X[j, support] .= 0
-            residual_err = Y[:, support] - A * X[:, support]
-            U, s, V = psvd(residual_err)
-            A[:, j] = U[:, 1]
-            X[j, support] = s[1] .* V[:, 1]
+
+            if typeof(ksvd.method) == ApproxSVD
+                A[:, j] .= 0
+                residual_err = Y[:, support] - A * X[:, support]
+                g = X[j, support]
+                d = residual_err * g
+                d = normalize(d)
+                g = residual_err * d
+                A[:, j] .= d
+                X[j, support] .= g
+            else
+                X[j, support] .= 0
+                residual_err = Y[:, support] - A * X[:, support]
+                U, s, V = psvd(residual_err)
+                A[:, j] = U[:, 1]
+                X[j, support] = s[1] .* V[:, 1]
+            end
         end
+
         opt = mean(abs.(Y .- A * X))
         opt2 = percent_recovery_of_atoms(A, A0, threshold=threshold)
         log[k, :] .= [opt, opt2]
@@ -167,19 +203,19 @@ function predict(ksvd::KSVD,
             support = findall(X[j, :] .!= 0)
             length(support) == 0 && continue
 
-            if ksvd.method == ApproxSVD
+            if typeof(ksvd.method) == ApproxSVD
                 A[:, j] .= 0
                 residual_err = Y[:, support] - A * X[:, support]
                 g = X[j, support]
                 d = residual_err * g
-                d = mapslices(normalize, d, dims=1)
+                d = normalize(d)
                 g = residual_err * d
                 A[:, j] .= d
                 X[j, support] .= g
             else
                 X[j, support] .= 0
                 residual_err = Y[:, support] - A * X[:, support]
-                U, s, V = svd(residual_err)
+                U, s, V = psvd(residual_err)
                 A[:, j] = U[:, 1]
                 X[j, support] = s[1] .* V[:, 1]
             end

@@ -89,8 +89,8 @@ function sparse_coding_with_mask(img, A, k0, sig, mask, patch_size)
 
     omp = OMP(k0)
     for i in 1:size(patches)[1]
-        A_mask = A[vec(mask_patches[i, :, :]), :]
-        patch_mask = patches[i,:,:][mask_patches[i, :, :]]
+        A_mask = A[vec(mask_patches[i, :, :]) .== 1, :]
+        patch_mask = patches[i,:,:][mask_patches[i, :, :] .== 1]
         omp.eps = length(patch_mask) * (sig^2) * 1.1
         q[i, :], S = predict(omp, A_mask, patch_mask)
     end

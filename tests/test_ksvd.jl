@@ -1,6 +1,7 @@
 using Test
 using Random
 using LinearAlgebra
+using LowRankApprox
 # using PyPlot
 include("../src/DictionaryLearning/ksvd.jl")
 include("../src/DictionaryLearning/utils.jl")
@@ -9,7 +10,7 @@ include("../src/DictionaryLearning/utils.jl")
 random_state = 0
 sig = 0.1
 k0 = 4
-n_iter = 50
+n_iter = 20
 
 rng = MersenneTwister(random_state)
 A0 = randn(rng, 30, 60)
@@ -22,7 +23,7 @@ for i in 1:size(Y)[2]
     Y[:, i] = A0[:, S] * randn(rng, k0) + randn(30) .* sig
 end
 
-ksvd = KSVD(sig, size(A0)[2], k0)
+ksvd = KSVD(sig, size(A0)[2], k0, PSVD())
 A, X, log = predict(ksvd, Y, A0; n_iter=n_iter, threshold=0.99)
 
 score = percent_recovery_of_atoms(A, A0)
