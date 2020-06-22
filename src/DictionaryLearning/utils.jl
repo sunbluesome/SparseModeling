@@ -1,10 +1,9 @@
+using Statistics
 
 # based on mutual coherence
 function percent_recovery_of_atoms(A::AbstractMatrix{T},
                                    A0::AbstractMatrix{U};
                                    threshold=0.99) where {T <: Real, U <: Real}
-    """
-    """
     num = 0
     for m in 1:size(A0)[2]
         a = A0[:, m]
@@ -44,7 +43,7 @@ extract_patches_2d(img::AbstractMatrix{T}, patch_size::Integer,
                    max_patches::Integer) where {T <: Real} = extract_patches_2d(img, patch_size, max_patches, MersenneTwister())
 
 
-function reconstruct_from_patches_2d(patches::AbstractMatrix{Real}, img_size::Tuple{Integer, Integer})
+function reconstruct_from_patches_2d(patches::AbstractMatrix{T}, img_size::Tuple{U, U}) where {T <: Real, U <: Integer}
     i_h, i_w = img_size[1:2]
     p_h, p_w = size(patches)[1:2]
     img = zeros(img_size)
@@ -61,4 +60,17 @@ function reconstruct_from_patches_2d(patches::AbstractMatrix{Real}, img_size::Tu
         end
     end
     img
+end
+
+function generate_dct_dictionary(patch_size::T, n_atom::U) where {T <: Integer, U <: Integer}
+    A_1d = zeros(Float64, patch_size, n_atom)
+    for k in 1:n_atom
+        for i in 1:patch_size
+            A_1d[i, k] = cos((i - 1) * (k - 1) * pi / 11)
+        end
+        if k != 1
+            A_1d[:, k] .-= mean(A_1d[:, k])
+        end
+    end
+    kron(A_1d, A_1d)
 end
