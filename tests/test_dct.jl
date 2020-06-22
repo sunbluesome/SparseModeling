@@ -32,4 +32,5 @@ function show_dict(A::AbstractMatrix{T};
 end
 
 show_dict(A_2d)
-
+savefig("test_dct.png")
+close()
