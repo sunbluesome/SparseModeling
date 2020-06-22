@@ -31,5 +31,7 @@ function show_dict(A::AbstractMatrix{T};
     fig
 end
 
-show_dict(A_2d)
-
+fig = show_dict(A_2d)
+dir = dirname(@__FILE__)
+fig.savefig(dir * "/dct_test.png")
+close(fig)
