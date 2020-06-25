@@ -1,4 +1,4 @@
-
+using Printf
 mutable struct OMP
     k::Int16
     eps::Float64
@@ -82,17 +82,40 @@ function predict(omp::OMP, Afull::AbstractMatrix{T}, bfull::AbstractVector{U}, m
 end
 
 
-function sparse_coding_with_mask(img, A, k0, sig, mask, patch_size)
-    patches = extract_patches_2d(img, patch_size)
-    mask_patches = extract_patches_2d(mask, patch_size)
-    q = zeros(size(patches)[1], size(A)[2])
+function sparse_coding(img, A, k0, sig, patch_size, step)
+    patches = extract_patches_2d(img, patch_size, step)
+    n = length(patches[1,:,:])
+    q = zeros(size(A)[2], size(patches)[1])
 
     omp = OMP(k0)
     for i in 1:size(patches)[1]
-        A_mask = A[vec(mask_patches[i, :, :]) .== 1, :]
-        patch_mask = patches[i,:,:][mask_patches[i, :, :] .== 1]
-        omp.eps = length(patch_mask) * (sig^2) * 1.1
-        q[i, :], S = predict(omp, A_mask, patch_mask)
+        if i % 1000 == 0
+            @printf("process:\t %d\n", i)
+        end
+        omp.eps = n * (sig^2) * 1.1
+        q[:, i], S = predict(omp, A, vec(patches[i, :, :]))
     end
     q
 end
+sparse_coding(img, A, k0, sig, patch_size) =  parse_coding(img, A, k0, sig, patch_size, 1)
+
+function sparse_coding_with_mask(img, A, k0, sig, mask, patch_size, step)
+    patches = extract_patches_2d(img, patch_size, step)
+    mask_patches = extract_patches_2d(mask, patch_size, step)
+    q = zeros(size(A)[2], size(patches)[1])
+
+    omp = OMP(k0)
+    for i in 1:size(patches)[1]
+        if i % 1000 == 0
+            @printf("process:\t %d\n", i)
+        end
+        A_mask = A[vec(mask_patches[i, :, :]) .== 1, :]
+        patch_mask = patches[i,:,:][mask_patches[i, :, :] .== 1]
+        omp.eps = length(patch_mask) * (sig^2) * 1.1
+        q[:, i], S = predict(omp, A_mask, patch_mask)
+    end
+    q
+end
+sparse_coding_with_mask(img, A, k0, sig,
+                        mask, patch_size) = sparse_coding_with_mask(img, A, k0, sig,
+                                                                    mask, patch_size, 1) 

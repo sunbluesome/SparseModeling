@@ -1,11 +1,12 @@
 using LinearAlgebra
-using LowRankApprox
 using Statistics
 using Printf
+using LowRankApprox
 include("../MP/OMP.jl")
 
 abstract type PredictMethod end
 mutable struct ApproxSVD <: PredictMethod end
+mutable struct SVD <: PredictMethod end
 mutable struct PSVD <: PredictMethod end
 
 mutable struct KSVD
@@ -50,6 +51,12 @@ function predict(ksvd::KSVD,
                 g = residual_err * d
                 A[:, j] .= d
                 X[j, support] .= g
+            elseif typeof(ksvd.method) == PSVD
+                X[j, support] .= 0
+                residual_err = Y[:, support] - A * X[:, support]
+                U, s, V = psvd(residual_err)
+                A[:, j] = U[:, 1]
+                X[j, support] = s[1] .* V[:, 1]
             else
                 X[j, support] .= 0
                 residual_err = Y[:, support] - A * X[:, support]
@@ -98,10 +105,16 @@ function predict(ksvd::KSVD,
                 g = residual_err * d
                 A[:, j] .= d
                 X[j, support] .= g
-            else
+            elseif typeof(ksvd.method) == PSVD
                 X[j, support] .= 0
                 residual_err = Y[:, support] - A * X[:, support]
                 U, s, V = psvd(residual_err)
+                A[:, j] = U[:, 1]
+                X[j, support] = s[1] .* V[:, 1]
+            else
+                X[j, support] .= 0
+                residual_err = Y[:, support] - A * X[:, support]
+                U, s, V = svd(residual_err)
                 A[:, j] = U[:, 1]
                 X[j, support] = s[1] .* V[:, 1]
             end
@@ -148,10 +161,16 @@ function predict(ksvd::KSVD,
                 g = residual_err * d
                 A[:, j] .= d
                 X[j, support] .= g
-            else
+            elseif typeof(ksvd.method) == PSVD
                 X[j, support] .= 0
                 residual_err = Y[:, support] - A * X[:, support]
                 U, s, V = psvd(residual_err)
+                A[:, j] = U[:, 1]
+                X[j, support] = s[1] .* V[:, 1]
+            else
+                X[j, support] .= 0
+                residual_err = Y[:, support] - A * X[:, support]
+                U, s, V = svd(residual_err)
                 A[:, j] = U[:, 1]
                 X[j, support] = s[1] .* V[:, 1]
             end
@@ -212,10 +231,16 @@ function predict(ksvd::KSVD,
                 g = residual_err * d
                 A[:, j] .= d
                 X[j, support] .= g
-            else
+            elseif typeof(ksvd.method) == PSVD
                 X[j, support] .= 0
                 residual_err = Y[:, support] - A * X[:, support]
                 U, s, V = psvd(residual_err)
+                A[:, j] = U[:, 1]
+                X[j, support] = s[1] .* V[:, 1]
+            else
+                X[j, support] .= 0
+                residual_err = Y[:, support] - A * X[:, support]
+                U, s, V = svd(residual_err)
                 A[:, j] = U[:, 1]
                 X[j, support] = s[1] .* V[:, 1]
             end
@@ -228,17 +253,11 @@ function predict(ksvd::KSVD,
     return A, X, log
 end
 
-# DCT
-function generate_dct(patch_size::Integer, dict_size::Integer)
-    A_1D = zeros(patch_size, dict_size)
-    for k in 1:dict_size
-        for i in 1:patch_size
-            A_1D[i, k] = cos(i * (k-1) * pi / dict_size)
-        end
-
-        if k != 1
-            A_1D[:, k] .-= mean(A_1D[:, k])
-        end
-    end
-    kron(A_1D, A_1D)
-end
+# function sparse_encode(ksvd::KSVD, A, X, S, j)
+#     X[j, S] .= 0
+#     err = Y[:, S] - A * X[:, S]
+#     U, s, V = svd(err)
+#     A[:, j] = U[:, 1]
+#     X[j, S] = s[1] .* V[:, 1]
+#     (A, X)
+# end
