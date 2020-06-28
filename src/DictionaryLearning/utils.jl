@@ -1,5 +1,6 @@
 using Statistics
 using PyPlot
+using Random
 
 # based on mutual coherence
 function percent_recovery_of_atoms(A::AbstractMatrix{T},
@@ -16,9 +17,9 @@ function percent_recovery_of_atoms(A::AbstractMatrix{T},
 end
 
 
-function extract_patches_2d(img::AbstractMatrix{T}, patch_size::Integer, step::Integer) where {T <: Real}
+function extract_patches_2d_step(img::AbstractMatrix{T}, patch_size::Integer, step::Integer) where {T <: Real}
     img_h = size(img)[1]
-    img_w = size(img)[1]
+    img_w = size(img)[2]
     @assert mod(img_h - patch_size, step) == 0 && mod(img_w - patch_size, step) == 0
 
     yy = 1:step:(img_h - patch_size + 1)
@@ -30,8 +31,8 @@ function extract_patches_2d(img::AbstractMatrix{T}, patch_size::Integer, step::I
     end
     patches
 end
-extract_patches_2d(img::AbstractMatrix{T},
-                   patch_size::Integer) where {T <: Real} = extract_patches_2d(img, patch_size, 1)
+extract_patches_2d_step(img::AbstractMatrix{T},
+                        patch_size::Integer) where {T <: Real} = extract_patches_2d_step(img, patch_size, 1)
 
 
 function extract_patches_2d(img::AbstractMatrix{T}, patch_size::Integer,
@@ -50,6 +51,21 @@ function extract_patches_2d(img::AbstractMatrix{T}, patch_size::Integer,
 end
 extract_patches_2d(img::AbstractMatrix{T}, patch_size::Integer,
                    max_patches::Integer) where {T <: Real} = extract_patches_2d(img, patch_size, max_patches, MersenneTwister())
+
+function cvtPatches_2dto1d(patches_2d::AbstractArray{T, 3}) where {T <: Real}
+    n_p, p_h, p_w = size(patches_2d)
+    patches_1d = zeros(p_h * p_w, n_p)
+    for j in 1:n_p
+        patches_1d[:, j] .= vec(patches_2d[j, :, :])
+    end
+    patches_1d
+end
+
+function cvtPatches_1dto2d(patches_1d::AbstractArray{T, 2}, patch_size::Tuple{U, U}) where {T <: Real, U <: Real}
+    patches_2d = reshape(patches_1d, patch_size[1], patch_size[2], :)
+    permutedims(patches_2d, [3, 1, 2])
+end
+cvtPatches_1dto2d(patches_1d::AbstractMatrix{T}, patch_size::Integer) where {T <: Real} = cvtPatches_1dto2d(patches_1d, (patch_size, patch_size))
 
 
 function reconstruct_from_patches_1d(patches_1d::AbstractMatrix{T},
@@ -72,6 +88,29 @@ function reconstruct_from_patches_1d(patches_1d::AbstractMatrix{T},
         end
     end
     img
+end
+
+function reconstruct_from_patches_2d(patches_2d::AbstractArray{T, 3},
+                                     img_size::Tuple{U, U},
+                                     step::Integer) where {T <: Real, U <: Integer}
+    i_h, i_w = img_size[1:2]
+    p_h, p_w = size(patches_2d)[2:3]
+    @assert mod(i_h - p_h, step) == 0 && mod(i_w - p_w, step) == 0
+    img = zeros(img_size)
+    img_cnt = zeros(img_size)
+
+    n_h = i_h - p_h + 1
+    n_w = i_w - p_w + 1
+
+    yy = 1:step:(i_h - p_h + 1)
+    xx = 1:step:(i_w - p_w + 1)
+    n_p = length(xx) * length(yy)
+    for (k,(i,j)) in zip(1:n_p, Iterators.product(yy, xx))
+        img[i:(i - 1) + p_h, j:(j - 1) + p_w] .+= patches_2d[k, :, :]
+        img_cnt[i:(i - 1) + p_h, j:(j - 1) + p_w] .+= 1
+    end
+
+    img ./ img_cnt
 end
 
 function reconstruct_from_patches_2d(patches_2d::AbstractArray{T, 3}, img_size::Tuple{U, U}) where {T <: Real, U <: Integer}
@@ -107,26 +146,26 @@ function generate_dct_dictionary(patch_size::T, n_atom::U) where {T <: Integer, 
 end
 
 
-function show_dict(A::AbstractMatrix{T};
+function show_dict(A::AbstractMatrix{T},
+                   patch_size::Tuple{U, U};
                    figsize::Tuple{U, U}=(4, 4),
                    vmin::S=nothing,
                    vmax::S=nothing) where {T <: Real, U <: Integer, S <: Union{Nothing, Real}}
-    n = Int(sqrt(size(A)[1]))
-    m = Int(sqrt(size(A)[2]))
-    A_show = reshape(A, n, n, m, m)
+    m = Int(ceil(sqrt(size(A)[2])))
+    patches_2d = cvtPatches_1dto2d(A, patch_size)
     fig, axes = subplots(m, m, figsize=figsize)
-    for row in 1:m
-        for col in 1:m
-            axes[row, col].imshow(A_show[:, :, col, row],
-                                  cmap=:gray,
-                                  interpolation=:Nearest,
-                                  vmin=vmin,
-                                  vmax=vmax)
-            axes[row, col].axis(:off)
-        end
+
+    for i in 1:size(patches_2d)[1]
+        axes[i].imshow(patches_2d[i, :, :],
+                       cmap=:gray,
+                       interpolation=:Nearest,
+                       vmin=vmin,
+                       vmax=vmax)
+        axes[i].axis(:off)
     end
     fig
 end
+show_dict(A::AbstractMatrix{T}, patch_size::U) where {T <: Real, U <: Integer} = show_dict(A, (patch_size, patch_size))
 
 
 # PSNR

@@ -11,10 +11,10 @@ include("../src/MP/OMP.jl")
 random_state = 0
 rng = MersenneTwister(random_state)
 patch_size = 8
-step = Int(patch_size / 2)
-max_patches = 2000
+step = 4
+max_patches = 25000
 sig = 20
-m = 16
+m = 256
 k0 = 4
 n_iter = 15
 
@@ -30,27 +30,26 @@ PyPlot.close()
 
 # A = generate_dct_dictionary(patch_size, m)
 # extract_patches
-patches = extract_patches_2d(img, patch_size, max_patches, rng)
-patches_1d = zeros(patch_size^2, max_patches)
-for j in 1:max_patches
-    patches_1d[:, j] .= vec(patches[j, :, :])
-end
+patches_2d = extract_patches_2d(img, patch_size, max_patches, rng)
+patches_1d = cvtPatches_2dto1d(patches_2d)
 
 # ksvd
 ksvd = KSVD(sig, m, k0, PSVD())
 # A, X, log = predict(ksvd, patches_1d; initial_dictionary=A, n_iter=n_iter)
 A, X, log = predict(ksvd, patches_1d; n_iter=n_iter)
-show_dict(A)
-PyPlot.savefig(dir * "/dict_ksvd.png")
+
+show_dict(A, patch_size)
+PyPlot.savefig(dir * @sprintf("/dict_ksvd_%d.png", step))
 PyPlot.close()
 
 # image reconstruction
 X_pred = sparse_coding(img, A, k0, sig, patch_size, step)
-patches_re = A*X_pred
+patches_1d_recon = A*X_pred
 
-img_re = reconstruct_from_patches_1d(patches_re, size(img), (patch_size, patch_size))
+patches_2d_recon = cvtPatches_1dto2d(patches_1d_recon, patch_size)
+img_recon = reconstruct_from_patches_2d(patches_2d_recon, size(img), step)
 
-PyPlot.imshow(img_re, cmap=:gray, vmin=0, vmax=255)
+PyPlot.imshow(img_recon, cmap=:gray, vmin=0, vmax=255)
 PyPlot.colorbar()
-PyPlot.savefig(dir * @sprint("/barbara_recon_%d.png", step))
+PyPlot.savefig(dir * @sprintf("/barbara_recon_%d.png", step))
 PyPlot.close()
