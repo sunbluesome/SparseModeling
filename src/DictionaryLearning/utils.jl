@@ -169,6 +169,6 @@ show_dict(A::AbstractMatrix{T}, patch_size::U) where {T <: Real, U <: Integer} =
 
 
 # PSNR
-function get_psnr(im, recon)
-    10. * log(maximum(im) / sqrt(mean((im .- recon)^2)))
+function get_psnr(img_org, img_recon)
+    10. * Base.log(maximum(img_org) / sqrt(mean((img_org .- img_recon).^2)))
 end
