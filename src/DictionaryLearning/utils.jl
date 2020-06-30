@@ -172,3 +172,34 @@ show_dict(A::AbstractMatrix{T}, patch_size::U) where {T <: Real, U <: Integer} =
 function get_psnr(img_org, img_recon)
     10. * Base.log(maximum(img_org) / sqrt(mean((img_org .- img_recon).^2)))
 end
+
+
+# activity
+function get_activity(a::AbstractVector{T}, patch_size::Tuple{U, U}) where {T <: Real, U <: Integer}
+    n = Int(sqrt(length(a)))
+    atom = reshape(a, patch_size)
+    activity = 0
+    for i in 2:n
+        for j in 1:n
+            activity += abs(atom[i,j] - atom[i - 1, j])
+        end
+    end
+
+    for i in 1:n
+        for j in 2:n
+            activity += abs(atom[i, j] - atom[i, j - 1])
+        end
+    end
+
+    activity
+end
+get_activity(atom::AbstractVector{T},
+             patch_size::Integer) where {T <: Real} = get_activity(atom, (patch_size, patch_size))
+
+function get_activity(A::AbstractMatrix{T}, patch_size::Tuple{U, U}) where {T <: Real, U <: Integer}
+    f = x -> get_activity(x, patch_size)
+    acts = mapslices(f, A, dims=1)
+    vec(acts) ./ maximum(acts)
+end
+get_activity(A::AbstractMatrix{T},
+             patch_size::Integer) where {T <: Real} = get_activity(A, (patch_size, patch_size))
