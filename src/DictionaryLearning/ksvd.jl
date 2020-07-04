@@ -42,16 +42,7 @@ function predict(ksvd::KSVD,
             support = findall(X[j, :] .!= 0)
             length(support) == 0 && continue
 
-            if typeof(ksvd.method) == ApproxSVD
-                A[:, j] .= 0
-                residual_err = Y[:, support] - A * X[:, support]
-                g = X[j, support]
-                d = residual_err * g
-                d = normalize(d)
-                g = residual_err * d
-                A[:, j] .= d
-                X[j, support] .= g
-            elseif typeof(ksvd.method) == PSVD
+            if typeof(ksvd.method) == PSVD
                 X[j, support] .= 0
                 residual_err = Y[:, support] - A * X[:, support]
                 U, s, V = psvd(residual_err)
@@ -76,8 +67,8 @@ end
 function predict(ksvd::KSVD,
                  Y::AbstractMatrix,
                  A0::AbstractMatrix;
-                 n_iter::Integer=50,
-                 threshold=0.95)
+                 n_iter::Integer=15,
+                 threshold=0.99)
 
     temp = Y[:, 1:ksvd.m]
     A = mapslices(normalize, temp, dims=1)
@@ -96,16 +87,7 @@ function predict(ksvd::KSVD,
             support = findall(X[j, :] .!= 0)
             length(support) == 0 && continue
 
-            if typeof(ksvd.method) == ApproxSVD
-                A[:, j] .= 0
-                residual_err = Y[:, support] - A * X[:, support]
-                g = X[j, support]
-                d = residual_err * g
-                d = normalize(d)
-                g = residual_err * d
-                A[:, j] .= d
-                X[j, support] .= g
-            elseif typeof(ksvd.method) == PSVD
+            if typeof(ksvd.method) == PSVD
                 X[j, support] .= 0
                 residual_err = Y[:, support] - A * X[:, support]
                 U, s, V = psvd(residual_err)
@@ -132,8 +114,8 @@ function predict(ksvd::KSVD,
                  Y::AbstractMatrix,
                  A0::AbstractMatrix,
                  initial_dictionary::AbstractMatrix;
-                 n_iter::Integer=50,
-                 threshold=0.95)
+                 n_iter::Integer=15,
+                 threshold=0.99)
 
     A = initial_dictionary
 
@@ -152,16 +134,7 @@ function predict(ksvd::KSVD,
             support = findall(X[j, :] .!= 0)
             length(support) == 0 && continue
 
-            if typeof(ksvd.method) == ApproxSVD
-                A[:, j] .= 0
-                residual_err = Y[:, support] - A * X[:, support]
-                g = X[j, support]
-                d = residual_err * g
-                d = normalize(d)
-                g = residual_err * d
-                A[:, j] .= d
-                X[j, support] .= g
-            elseif typeof(ksvd.method) == PSVD
+            if typeof(ksvd.method) == PSVD
                 X[j, support] .= 0
                 residual_err = Y[:, support] - A * X[:, support]
                 U, s, V = psvd(residual_err)
@@ -193,7 +166,7 @@ function predict(ksvd::KSVD,
                  Y::AbstractMatrix,
                  missingValue::Real;
                  initial_dictionary::Union{AbstractMatrix, Nothing}=nothing,
-                 n_iter::Integer=50)
+                 n_iter::Integer=15)
     if isnothing(initial_dictionary)
         temp = Y[:, 1:ksvd.m]
         A = mapslices(normalize, temp, dims=1)
@@ -222,16 +195,7 @@ function predict(ksvd::KSVD,
             support = findall(X[j, :] .!= 0)
             length(support) == 0 && continue
 
-            if typeof(ksvd.method) == ApproxSVD
-                A[:, j] .= 0
-                residual_err = Y[:, support] - A * X[:, support]
-                g = X[j, support]
-                d = residual_err * g
-                d = normalize(d)
-                g = residual_err * d
-                A[:, j] .= d
-                X[j, support] .= g
-            elseif typeof(ksvd.method) == PSVD
+            if typeof(ksvd.method) == PSVD
                 X[j, support] .= 0
                 residual_err = Y[:, support] - A * X[:, support]
                 U, s, V = psvd(residual_err)
@@ -252,12 +216,3 @@ function predict(ksvd::KSVD,
     end
     return A, X, log
 end
-
-# function sparse_encode(ksvd::KSVD, A, X, S, j)
-#     X[j, S] .= 0
-#     err = Y[:, S] - A * X[:, S]
-#     U, s, V = svd(err)
-#     A[:, j] = U[:, 1]
-#     X[j, S] = s[1] .* V[:, 1]
-#     (A, X)
-# end
