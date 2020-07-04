@@ -99,9 +99,34 @@ function sparse_coding(img, A, k0, sig, patch_size, step)
 end
 sparse_coding(img, A, k0, sig, patch_size) =  sparse_coding(img, A, k0, sig, patch_size, 1)
 
-# function sparse_coding_with_mask(img, A, k0, sig, mask, patch_size, step)
-#     patches = extract_patches_2d(img, patch_size, step)
-#     mask_patches = extract_patches_2d(mask, patch_size, step)
+
+function sparse_coding(img, A, k0, sig, patch_size, step, missingValue)
+    patches_2d = extract_patches_2d_step(img, patch_size, step)
+    patches_1d = cvtPatches_2dto1d(patches_2d)
+    n = size(patches_1d)[2]
+    q = zeros(size(A)[2], n)
+
+    # generate mask
+    mask_valid = patches_1d .!= missingValue
+    mask_invalid = .!mask_valid
+
+    omp = OMP(k0)
+    for i in 1:n
+        if i % 1000 == 0
+            @printf("process:\t %d\n", i)
+        end
+        omp.eps = sum(mask_valid[:, i]) * (sig^2) * 1.1
+        y = @view patches_1d[mask_valid[:, i], i]
+        As = @view A[mask_valid[:, i], :]
+        q[:, i], S = predict(omp, As, y)
+    end
+    q
+end
+
+
+# function sparse_coding_with_mask(img, A, k0, sig, missingValue, patch_size, step)
+#     patches_2d = extract_patches_2d(img, patch_size, step)
+#     patches_1d = cvtPatches_2dto1d(patches_2d)
 #     q = zeros(size(A)[2], size(patches)[1])
 
 #     omp = OMP(k0)
